@@ -93,7 +93,7 @@ def main():
     for m, pub in zip(meta, result):
         counts = pub.data.meas.get_counts()
         n = len(m["idx"])
-        samples = np.concatenate([np.full(c, int(b[::-1], 2)) for b, c in counts.items()])  # key is q_{n-1}..q_0
+        samples = np.concatenate([np.full(c, int(b, 2)) for b, c in counts.items()])  # key is q_{n-1}..q_0
         feas, best, sel = qb.decode(samples, m["e"], m["xs"], m["idx"], m["k"])
         sel_all += sel
         out["subproblems"][m["name"]] = {"qubits": n, "two_qubit_gates": m["two_qubit_gates"], "depth": m["depth"],
