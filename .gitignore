@@ -1,0 +1,22 @@
+# secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# node
+node_modules/
+dist/
+
+# office lock files
+~$*
+
+# misc
+.DS_Store
+_to_delete/

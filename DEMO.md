@@ -50,15 +50,40 @@ VITE_API_URL=http://localhost:8000
 4. Open **Benchmark**, click **Run benchmark**: uniform vs greedy vs exact vs QAOA.
 5. Close on the footer line: simulator results, prototype risk layer, no quantum-advantage claim.
 
-## 5. Deploy the front end (static)
+## 5. Deploy
 
-Vercel or Netlify, no environment variables needed:
+### Front end → Vercel
 
-- Root directory: `frontend/disfront`
-- Build command: `npm run build`
-- Output directory: `dist`
+One-time, in `frontend/disfront`:
 
-The recorded results ship inside `dist/snapshot.json`, so the hosted link works without the backend.
+```bash
+npm install react-router-dom mapbox-gl zustand @types/geojson
+npx shadcn@latest add sheet sonner input textarea
+npm run build   # must pass before pushing
+```
+
+Vercel project settings:
+
+- Root directory: `frontend/disfront` · Framework: Vite · Build: `npm run build` · Output: `dist`
+- Env vars (see `.env.example`): `VITE_MAPBOX_TOKEN` (required for the map),
+  `VITE_API_URL` (leave empty for demo mode), `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_DEMO_LOGINS=true`
+- `vercel.json` rewrites every path to `index.html` so `/citizen`, `/field`, `/admin/...` survive a refresh.
+- In the Mapbox dashboard, restrict the public token to your `*.vercel.app` domain and `localhost`.
+
+With `VITE_API_URL` empty the whole disaster simulation runs in the browser on `public/snapshot.json`.
+
+### Backend → Render / Railway (FastAPI)
+
+- Root directory: `backend` · Build: `pip install -r requirements.txt`
+- Start: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+- Env: `CORS_ORIGINS=https://<your-app>.vercel.app`, optional `QISKIT_IBM_TOKEN`
+- Then set `VITE_API_URL=https://<service>.onrender.com/api/v1` on Vercel and redeploy.
+- `python server.py` is the same API with no FastAPI dependency (handy offline).
+
+### Database → Supabase
+
+Paste `supabase/migrations/001_init.sql` into the SQL editor (or `supabase db push`).
+Endpoint plan for the backend: `docs/API_CONTRACT.md`.
 
 ## 6. Refresh the recorded results
 

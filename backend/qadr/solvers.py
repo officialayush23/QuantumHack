@@ -45,7 +45,7 @@ def solve_greedy(scenario, k):
     w = weights(scenario); chosen, covered = [], set()
     for _ in range(k):
         best, bi = -1.0, None
-        for i in range(len(geo.CANDIDATES)):
+        for i in range(len(geo.SITES)):
             if i in chosen:
                 continue
             g = sum(w[c] for c in geo.COVERS[i] if c not in covered)
@@ -58,7 +58,7 @@ def solve_greedy(scenario, k):
 @lru_cache(maxsize=32)
 def solve_exact(scenario, k):
     t = time.perf_counter(); best, bsel, n = -1.0, None, 0
-    for comb in itertools.combinations(range(len(geo.CANDIDATES)), k):
+    for comb in itertools.combinations(range(len(geo.SITES)), k):
         n += 1
         v = coverage(comb, scenario)
         if v > best:

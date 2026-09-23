@@ -1,5 +1,7 @@
 numpy>=1.26
 scipy>=1.11
+fastapi>=0.110
+uvicorn[standard]>=0.29
 # optional, for real IBM hardware runs (method "qaoa_ibm"):
 # qiskit>=2.0
 # qiskit-ibm-runtime>=0.40

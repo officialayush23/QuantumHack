@@ -4,6 +4,7 @@
     python server.py                 # http://localhost:8000
 
 Endpoints
+    (each also served under /api/v1, with solve/benchmark under /api/v1/quantum/)
     GET  /api/health                      solver + IBM availability
     GET  /api/scenario?id=t0|t6|t12       grid, risk cells, candidate sites, rivers
     POST /api/solve                       {scenario, k, method, p, shots, previous?, local?, backend?}
@@ -18,6 +19,15 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from qadr import geo, solvers  # noqa: E402
 
 PORT = int(os.environ.get("PORT", 8000))
+
+# The frontend calls /api/v1/...; the old /api/... paths still work.
+ALIASES = {"/api/v1/health": "/api/health", "/api/v1/scenario": "/api/scenario",
+           "/api/v1/quantum/solve": "/api/solve", "/api/v1/quantum/benchmark": "/api/benchmark"}
+
+
+def route(path):
+    path = path.rstrip("/") or "/"
+    return ALIASES.get(path, path)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -37,6 +47,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         u = urlparse(self.path); q = {k: v[0] for k, v in parse_qs(u.query).items()}
+        u = u._replace(path=route(u.path))
         try:
             if u.path == "/api/health":
                 return self._send(200, {"ok": True, "time": time.time(), **solvers.ibm_status()})
@@ -53,6 +64,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         u = urlparse(self.path)
+        u = u._replace(path=route(u.path))
         try:
             n = int(self.headers.get("Content-Length", 0))
             body = json.loads(self.rfile.read(n) or b"{}")
