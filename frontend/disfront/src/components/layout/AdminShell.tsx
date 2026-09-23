@@ -1,7 +1,7 @@
 import * as React from "react"
 import { NavLink, useLocation } from "react-router-dom"
 import {
-  Atom, BarChart3, CircleHelp, ClipboardCheck, Inbox, Menu, Network, Radar, Radio, Siren, Truck, Waves, Waypoints,
+  Atom, BarChart3, Bot, CircleHelp, ClipboardCheck, Gauge, Inbox, Menu, Network, Radar, Radio, Siren, Sparkles, Truck, Waves, Waypoints,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -9,8 +9,10 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { TourAnchor, useTour } from "@/components/common/tour"
+import { CopilotPanel } from "@/components/copilot/CopilotPanel"
 import { dataMode } from "@/config/env"
 import { cn } from "@/lib/utils"
+import { useCopilot } from "@/store/copilot"
 import { selectHeld, selectPending, selectUnattended, useWorld } from "@/store/world"
 import { PersonaSwitcher } from "./PersonaSwitcher"
 import { SimControls } from "./SimControls"
@@ -23,7 +25,7 @@ interface NavItem {
   count?: () => { n: number; tone: Tone; what: string } | null
 }
 
-/** Grouped so the rail answers "where do I start": four screens run the event, the rest explain it.
+/** Grouped so the rail answers "where do I start": command (the quantum loop), response (acting on it), intelligence (inputs and proof).
  *  A badge means a person has to act, never "this page has content". */
 function useNav(): { group: string; items: NavItem[] }[] {
   const pending = useWorld((s) => selectPending(s).length)
@@ -31,28 +33,30 @@ function useNav(): { group: string; items: NavItem[] }[] {
   const unattended = useWorld((s) => selectUnattended(s).length)
   return [
     {
-      group: "Operations",
+      group: "Command",
+      items: [
+        { to: "/admin/overview", label: "Overview", icon: Gauge },
+        { to: "/admin/quantum", label: "Quantum positioning", icon: Atom },
+        { to: "/admin/agents", label: "Agents & trace", icon: Bot },
+      ],
+    },
+    {
+      group: "Response",
       items: [
         { to: "/admin/console", label: "Live map", icon: Radar },
         { to: "/admin/dispatch", label: "Who is on what", icon: Waypoints, count: () => (unattended ? { n: unattended, tone: "gap", what: "incidents with nobody on the way" } : null) },
         { to: "/admin/approvals", label: "Approvals", icon: ClipboardCheck, count: () => (pending ? { n: pending, tone: "blocked", what: "waiting for an officer" } : null) },
         { to: "/admin/reports", label: "Reports", icon: Inbox, count: () => (held ? { n: held, tone: "blocked", what: "held below the trust floor" } : null) },
-      ],
-    },
-    {
-      group: "Quantum",
-      items: [
-        { to: "/admin/quantum", label: "Quantum planner", icon: Atom },
-        { to: "/admin/after-action", label: "Benchmark & after-action", icon: BarChart3 },
-      ],
-    },
-    {
-      group: "Analysis",
-      items: [
         { to: "/admin/incidents", label: "Incidents", icon: Siren },
         { to: "/admin/resources", label: "Units & relief camps", icon: Truck },
-        { to: "/admin/feeds", label: "Live river & rain", icon: Waves },
         { to: "/admin/alerts", label: "Public alerts", icon: Radio },
+      ],
+    },
+    {
+      group: "Intelligence",
+      items: [
+        { to: "/admin/feeds", label: "Risk inputs: river & rain", icon: Waves },
+        { to: "/admin/after-action", label: "Impact & benchmark", icon: BarChart3 },
         { to: "/admin/how", label: "How this works", icon: Network },
       ],
     },
@@ -112,12 +116,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </Sheet>
           <TourAnchor id="clock"><SimControls /></TourAnchor>
           <div className="ml-auto flex items-center gap-2">
+            <TourAnchor id="copilot-btn">
+              <Button size="sm" variant="outline" onClick={() => useCopilot.getState().toggle()}><Sparkles className="text-primary" /> Copilot <kbd className="ml-1 hidden rounded border px-1 font-mono text-[10px] text-muted-foreground md:inline">⌘K</kbd></Button>
+            </TourAnchor>
             <PersonaSwitcher current="admin" />
             {tour && <Button variant="ghost" size="sm" onClick={tour.start} key={loc.pathname}><CircleHelp /> Guide</Button>}
           </div>
         </header>
         <main className="flex min-w-0 flex-1 flex-col gap-5 p-4 md:p-6">{children}</main>
       </div>
+      <CopilotPanel />
     </div>
   )
 }
@@ -128,7 +136,7 @@ export function Brand() {
       <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Atom className="size-4" /></div>
       <div className="leading-tight">
         <p className="text-sm font-semibold">Q-ADR</p>
-        <p className="text-[11px] text-muted-foreground">Krishna basin command</p>
+        <p className="text-[11px] text-muted-foreground">Quantum-assisted disaster response</p>
       </div>
     </div>
   )

@@ -30,6 +30,12 @@ interface World {
   scenarioId: ScenarioId
   scenario: Scenario | null
   placement: SolveResult | null
+  /** placement before the current one, so the planner agent can say what changed */
+  prevPlacement: SolveResult | null
+  planVersion: number
+  replanCount: number
+  /** boat / rescue dispatches (what staging posts are for), and how many left from a QAOA post */
+  dispatchStats: { total: number; fromPost: number; etaSum: number }
   units: Unit[]
   incidents: Incident[]
   reports: Report[]
@@ -201,6 +207,10 @@ export const useWorld = create<World>()((set, get) => {
     scenarioId: "t0",
     scenario: null,
     placement: null,
+    prevPlacement: null,
+    planVersion: 0,
+    replanCount: 0,
+    dispatchStats: { total: 0, fromPost: 0, etaSum: 0 },
     units: freshUnits(),
     incidents: [],
     reports: [],
@@ -233,6 +243,7 @@ export const useWorld = create<World>()((set, get) => {
       set({
         minute: 0, running: false, units: freshUnits(), incidents: [], reports: [], shelters: freshShelters(), closures: [],
         approvals: [], alerts: [], events: [], changes: [], lastReplanAt: null, scriptIdx: 0, needsReplan: null, placement: null,
+        prevPlacement: null, planVersion: 0, replanCount: 0, dispatchStats: { total: 0, fromPost: 0, etaSum: 0 },
       })
       log("system", "World reset: units at their home stations, no reports yet")
       void get().setScenario("t0", "reset")
@@ -281,7 +292,7 @@ export const useWorld = create<World>()((set, get) => {
                 const inc = st.incidents.find((i) => i.id === u.task!.targetId)
                 return { ...u, pos: u.task.target, status: "on_scene" as const, task: undefined, busyUntil: minute + (inc ? CATEGORY[inc.category].serviceMin : 30) }
               }
-              return { ...u, pos: u.task.target, status: "staging" as const, task: undefined }
+              return { ...u, pos: u.task.target, status: "staging" as const, task: undefined, stagedAt: u.task.targetId.replace("site:", "") }
             }
             return { ...u, pos, task: { ...u.task, progressKm, etaMin: ((u.task.lengthKm - progressKm) / u.speedKmh) * 60 } }
           }
@@ -396,11 +407,11 @@ export const useWorld = create<World>()((set, get) => {
         log("system", `Could not load ${id}: ${e instanceof Error ? e.message : String(e)}`)
         return
       }
-      set({ scenarioId: id, scenario: sc, placement })
+      set((w) => ({ scenarioId: id, scenario: sc, prevPlacement: w.placement, placement, planVersion: w.planVersion + (id !== w.scenarioId || !w.placement ? 1 : 0) }))
       log("scenario", `Risk state → ${sc.label}`, cause)
       if (placement?.regions) {
         const rs = Object.values(placement.regions)
-        log("quantum", `QAOA re-solved staging: ${rs.map((r) => `${r.region} ${r.qubits} qubits, ${r.warmStarted ? "warm start" : "cold start"}, ${r.costEvals} evaluations`).join("; ")}. Coverage ${(placement.coverage * 100).toFixed(1)}% (ratio ${placement.ratio.toFixed(3)} vs exact)`)
+        log("quantum", `Plan v${get().planVersion}: QAOA re-solved staging: ${rs.map((r) => `${r.region} ${r.qubits} qubits, ${r.warmStarted ? "warm start" : "cold start"}, ${r.costEvals} evaluations`).join("; ")}. Coverage ${(placement.coverage * 100).toFixed(1)}% (ratio ${placement.ratio.toFixed(3)} vs exact)`)
       }
       if (placement) stageFromPlacement(placement, cause)
       set({ needsReplan: `risk state changed to ${sc.label}` })
@@ -445,8 +456,16 @@ export const useWorld = create<World>()((set, get) => {
             }
             break
           }
-          const reason = `${pick.retask ? "re-tasked from a lower-priority job; " : ""}nearest ${need} unit, ETA ${Math.round(pick.eta)} min, severity ${d.severity}${d.people ? `, ${d.people} people` : ""}`
-          units = units.map((u) => (u.id === pick.u.id ? assign(u, "incident", d.id, d.pos, reason) : u))
+          const atPost = !pick.retask && pick.u.status === "staging" ? pick.u.stagedAt : undefined
+          const toPost = !pick.retask && pick.u.task?.kind === "staging" ? pick.u.task.targetId.replace("site:", "") : undefined
+          const post = atPost ?? toPost
+          const reason = `${pick.retask ? "re-tasked from a lower-priority job; " : ""}${atPost ? `launched from QAOA post ${atPost}; ` : toPost ? `diverted on its way to QAOA post ${toPost}; ` : ""}nearest ${need} unit, ETA ${Math.round(pick.eta)} min, severity ${d.severity}${d.people ? `, ${d.people} people` : ""}`
+          units = units.map((u) => {
+            if (u.id !== pick.u.id) return u
+            const a = assign(u, "incident", d.id, d.pos, reason)
+            return { ...a, stagedAt: undefined, task: a.task ? { ...a.task, fromPost: post } : a.task }
+          })
+          if (!pick.retask && (need === "boat" || need === "rescue")) set((w) => ({ dispatchStats: { total: w.dispatchStats.total + 1, fromPost: w.dispatchStats.fromPost + (post ? 1 : 0), etaSum: w.dispatchStats.etaSum + pick.eta } }))
           incidents = incidents.map((i) => {
             if (i.id === d.id) return { ...i, status: i.status === "open" ? "assigned" : i.status, unitIds: [...i.unitIds, pick.u.id] }
             if (pick.retask && i.id === pick.retask.id) return { ...i, unitIds: i.unitIds.filter((x) => x !== pick.u.id), status: i.unitIds.length <= 1 ? "open" : i.status }
@@ -457,7 +476,7 @@ export const useWorld = create<World>()((set, get) => {
         }
       }
       const kept = units.filter((u) => u.status === "en_route" && !routed.includes(u.id)).map((u) => ({ unitId: u.id, unitLabel: u.label, change: "kept" as const, target: incidents.find((i) => i.id === u.task?.targetId)?.title ?? "", reason: "still the best unit for this job" }))
-      set({ units, incidents, changes: [...changes, ...kept], lastReplanAt: s.minute })
+      set((w) => ({ units, incidents, changes: [...changes, ...kept], lastReplanAt: s.minute, replanCount: w.replanCount + (changes.length ? 1 : 0) }))
       routed.forEach(requestRoute)
       if (changes.length) log("replan", `Re-planned (${why}): ${changes.map((c) => `${c.unitLabel} → ${c.target}`).join("; ")}`)
     },

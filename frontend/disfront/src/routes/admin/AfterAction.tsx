@@ -11,7 +11,9 @@ import { Kpi, PageHeader } from "@/components/common/bits"
 import { TourAnchor } from "@/components/common/tour"
 import { SHELTERS } from "@/data/region"
 import { fmtMin } from "@/lib/geo"
+import { computeImpact, PLAN_LABEL, type PlanKey } from "@/lib/impact"
 import { SCENARIOS, pct, type Benchmark } from "@/lib/qadr"
+import { cn } from "@/lib/utils"
 import { clock, loadBenchmark, useWorld } from "@/store/world"
 
 
@@ -29,6 +31,9 @@ export default function AfterAction() {
   const units = useWorld((s) => s.units)
   const shelters = useWorld((s) => s.shelters)
   const ready = useWorld((s) => s.ready)
+  const snapshot = useWorld((s) => s.snapshot)
+  const stats = useWorld((s) => s.dispatchStats)
+  const impact = React.useMemo(() => (snapshot ? computeImpact(snapshot) : null), [snapshot])
   React.useEffect(() => {
     if (!ready) return
     void Promise.all(SCENARIOS.map(async (s) => [s.id, await loadBenchmark(s.id)] as const)).then((rows) => setBench(Object.fromEntries(rows)))
@@ -47,9 +52,37 @@ export default function AfterAction() {
 
   return (
     <>
-      <PageHeader title="Benchmark & after-action" description="The evidence, in the running product rather than in a slide.">
+      <PageHeader title="Impact & benchmark" description="The evidence, in the running product rather than in a slide: what the quantum plan changes for the people waiting, and how it compares with classical methods.">
         <Button size="sm" variant="outline" onClick={download}><Download /> Export event log</Button>
       </PageHeader>
+      <TourAnchor id="aa-impact">
+        <Card>
+          <CardHeader>
+            <CardTitle>Drive time to life-safety calls, by staging plan</CardTitle>
+            <CardDescription>
+              Nearest post to each of the event's {impact?.calls.length ?? "…"} stranded / medical / structure calls, using the plan in force when the call came in · ×1.3 road detour at 35 km/h · {stats.fromPost} of {stats.total} boat and rescue dispatches in this session left from a QAOA post
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {impact && (
+              <Table>
+                <TableHeader><TableRow><TableHead>Plan</TableHead><TableHead className="text-right">Average</TableHead><TableHead className="text-right">Worst</TableHead><TableHead className="text-right">Within 20 min</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {(["home", "uniform", "greedy", "exact", "qaoa"] as PlanKey[]).map((k) => (
+                    <TableRow key={k} className={cn(k === "qaoa" && "bg-primary/10 font-medium")}>
+                      <TableCell>{PLAN_LABEL[k]}</TableCell>
+                      <TableCell className="text-right font-mono tabular-nums">{fmtMin(impact.plans[k].mean)}</TableCell>
+                      <TableCell className="text-right font-mono tabular-nums">{fmtMin(impact.plans[k].worst)}</TableCell>
+                      <TableCell className="text-right font-mono tabular-nums">{impact.plans[k].within20}/{impact.calls.length}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+            <p className="mt-3 text-xs text-muted-foreground">QAOA optimises risk-weighted coverage of the whole basin, not these particular calls, so a classical plan can land closer to some of them. The claim is pre-positioning that re-solves as the flood moves, not a quantum speed-up at 23 sites.</p>
+          </CardContent>
+        </Card>
+      </TourAnchor>
       <TourAnchor id="aa-bench" className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
         <Card>
           <CardHeader><CardTitle>Staging-post coverage by method</CardTitle><CardDescription>Same instance and objective per risk state · k = 6 · recorded simulator runs</CardDescription></CardHeader>

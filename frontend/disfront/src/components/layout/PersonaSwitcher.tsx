@@ -9,7 +9,7 @@ export function PersonaSwitcher({ current }: { current: "citizen" | "field" | "a
   const nav = useNavigate()
   if (!env.demoLogins) return null
   return (
-    <ToggleGroup type="single" variant="outline" size="sm" value={current} onValueChange={(v) => v && nav(v === "admin" ? "/admin/console" : `/${v}`)} aria-label="Switch view">
+    <ToggleGroup type="single" variant="outline" size="sm" value={current} onValueChange={(v) => v && nav(v === "admin" ? "/admin/overview" : `/${v}`)} aria-label="Switch view">
       <ToggleGroupItem value="citizen">Citizen</ToggleGroupItem>
       <ToggleGroupItem value="field">Field crew</ToggleGroupItem>
       <ToggleGroupItem value="admin">Command</ToggleGroupItem>

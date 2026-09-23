@@ -1,6 +1,5 @@
 import * as React from "react"
 import mapboxgl from "mapbox-gl"
-import type { Feature, FeatureCollection } from "geojson"
 import "mapbox-gl/dist/mapbox-gl.css"
 
 import { env } from "@/config/env"
@@ -56,6 +55,15 @@ const SEV_COLOR = ["interpolate", ["linear"], ["get", "severity"], 1, "#f1c27d",
 const UNIT_COLOR = ["match", ["get", "status"], "available", "#8DB596", "staging", "#4FB3A9", "en_route", "#E5A11F", "on_scene", "#E56A1F", "offline", "#6b6b6b", "#bbbbbb"]
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!))
+// Minimal GeoJSON shapes (kept local so the build does not depend on @types/geojson)
+type Geometry =
+  | { type: "Point"; coordinates: LngLat }
+  | { type: "LineString"; coordinates: LngLat[] }
+  | { type: "Polygon"; coordinates: LngLat[][] }
+interface Feature { type: "Feature"; geometry: Geometry; properties: Record<string, unknown> }
+interface FeatureCollection { type: "FeatureCollection"; features: Feature[] }
+type Props = { properties?: Record<string, unknown> | null }
+
 const fc = (features: Feature[]): FeatureCollection => ({ type: "FeatureCollection", features })
 const pt = (pos: LngLat, props: Record<string, unknown>): Feature => ({ type: "Feature", geometry: { type: "Point", coordinates: pos }, properties: props })
 
@@ -102,7 +110,7 @@ export function MapView(props: MapViewProps) {
           map.getCanvas().style.cursor = "pointer"
           const f = e.features?.[0]
           if (!f) return
-          popup.setLngLat(e.lngLat).setHTML(html(f.properties as Record<string, unknown>)).addTo(map)
+          popup.setLngLat(e.lngLat).setHTML(html(((f as unknown as Props).properties ?? {}) as Record<string, unknown>)).addTo(map)
         })
         map.on("mouseleave", layer, () => { map.getCanvas().style.cursor = ""; popup.remove() })
       }
@@ -117,7 +125,7 @@ export function MapView(props: MapViewProps) {
       for (const [layer, kind] of [["incidents", "incident"], ["units", "unit"], ["shelters", "shelter"], ["sites", "site"]] as const) {
         map.on("click", layer, (e) => {
           const f = e.features?.[0]
-          if (f) { e.preventDefault(); pickRef.current?.(kind, String(f.properties?.id), [e.lngLat.lng, e.lngLat.lat]) }
+          if (f) { e.preventDefault(); pickRef.current?.(kind, String((f as unknown as Props).properties?.id), [e.lngLat.lng, e.lngLat.lat]) }
         })
       }
       map.on("click", (e) => { if (!e.defaultPrevented) pickRef.current?.("map", "", [e.lngLat.lng, e.lngLat.lat]) })
@@ -129,7 +137,7 @@ export function MapView(props: MapViewProps) {
 
   const setData = React.useCallback((id: string, data: FeatureCollection) => {
     const src = mapRef.current?.getSource(id) as mapboxgl.GeoJSONSource | undefined
-    src?.setData(data)
+    src?.setData(data as unknown as Parameters<mapboxgl.GeoJSONSource["setData"]>[0])
   }, [])
 
   React.useEffect(() => {

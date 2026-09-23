@@ -47,7 +47,7 @@ export default function Dispatch() {
                         <TableRow key={u.id} onClick={() => setSel(u.id)} className="cursor-pointer" data-state={sel === u.id ? "selected" : undefined}>
                           <TableCell className="font-medium">{u.label}<div className="text-xs text-muted-foreground">{u.agency}</div></TableCell>
                           <TableCell>{u.task!.kind === "staging" ? <Badge variant="secondary">Staging</Badge> : null} {inc?.title ?? u.task!.targetId.replace("site:", "")}</TableCell>
-                          <TableCell className="max-w-72 text-xs text-muted-foreground whitespace-normal">{u.task!.reason}</TableCell>
+                          <TableCell className="max-w-72 text-xs text-muted-foreground whitespace-normal">{u.task!.fromPost && <Badge className="mr-1 mb-0.5">from QAOA post {u.task!.fromPost}</Badge>}{u.task!.reason}</TableCell>
                           <TableCell className="text-right font-mono tabular-nums">{fmtMin(u.task!.etaMin)}</TableCell>
                           <TableCell>
                             <Badge variant={u.task!.engine === "mapbox" ? "outline" : "secondary"}>{u.task!.engine}</Badge>

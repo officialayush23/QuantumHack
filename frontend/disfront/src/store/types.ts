@@ -19,6 +19,8 @@ export interface Task {
   reason: string
   /** true when the route could not avoid a reported closure (OSRM / straight line) */
   passesClosure?: boolean
+  /** the QAOA staging post the unit was waiting at when it was dispatched */
+  fromPost?: string
 }
 
 export interface Unit {
@@ -34,6 +36,8 @@ export interface Unit {
   task?: Task
   busyUntil?: number
   outsideDistrict?: boolean
+  /** QAOA staging post the unit is currently waiting at */
+  stagedAt?: string
 }
 
 export type IncidentStatus = "open" | "assigned" | "on_scene" | "resolved"

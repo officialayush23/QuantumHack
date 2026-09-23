@@ -3,6 +3,7 @@ import type { TourStep } from "@/components/common/tour"
 /** Guided-tour steps per admin screen. Each id matches a <TourAnchor id=…> on that screen. */
 
 export const AFTER_TOUR: TourStep[] = [
+  { id: "aa-impact", title: "What the plan changes on the ground", body: "Drive time from the nearest staging post to every life-safety call in the event, for home stations, uniform spacing, classical baselines and the QAOA plan.", side: "bottom" },
   { id: "aa-bench", title: "Quantum vs classical, on screen", body: "Coverage of the six staging posts for each risk state: uniform spacing, greedy, exhaustive search (the optimum) and QAOA. No quantum advantage is claimed at this size.", side: "bottom" },
   { id: "aa-outcome", title: "How the event went", body: "Computed from this session's event: incidents cleared, time to commit a unit, people evacuated.", side: "top" },
   { id: "aa-gaps", title: "Known gaps", body: "What does not work yet, said out loud before anyone finds it.", side: "top" },
@@ -63,4 +64,19 @@ export const REPORTS_TOUR: TourStep[] = [
 export const RESOURCES_TOUR: TourStep[] = [
   { id: "res-units", title: "Fleet", body: "Every unit, its agency, what it can do and where it is in its job. Take a unit out of service here and the plan re-solves around the gap.", side: "bottom" },
   { id: "res-camps", title: "Relief camps", body: "Occupancy against rated capacity. Evacuees are added as stranded incidents are cleared; admitting above capacity needs the Relief Officer.", side: "top" },
+]
+
+export const OVERVIEW_TOUR: TourStep[] = [
+  { id: "o-loop", title: "The loop", body: "Sense → predict (ML risk grid) → position (quantum) → respond (agents). The orange step is the quantum planner; everything to its right starts from where it put the crews. Click any step to open it.", side: "bottom" },
+  { id: "o-map", title: "One live map", body: "Risk grid, the current QAOA staging posts with their 11 km reach, units moving to posts and to incidents, camps and closed roads.", side: "right" },
+  { id: "o-impact", title: "Why the quantum layer is there", body: "Drive time from the nearest crew to every life-safety call in the event: from home stations vs from the QAOA posts, with classical baselines alongside. Computed from the recorded plans, not typed in.", side: "left" },
+  { id: "o-agents", title: "Agent activity", body: "Each line is an agent acting within its rules: forecast sentinel, quantum planner, triage, dispatch, routing and the delegation gate.", side: "left" },
+  { id: "o-copilot", title: "Copilot", body: "Ask in plain words or give an instruction. It calls the same tools the screens use and shows which ones. It cannot approve anything.", side: "left" },
+  { id: "copilot-btn", title: "Copilot, anywhere", body: "Opens on every command screen, or press ⌘K / Ctrl+K.", side: "bottom" },
+]
+
+export const AGENTS_TOUR: TourStep[] = [
+  { id: "ag-roster", title: "Who does what", body: "Each agent's job, what it reads, the tools it calls and what it may do without a person. Click one to filter the trace.", side: "bottom" },
+  { id: "ag-policy", title: "The planner's last decision", body: "Which regions were re-solved with QAOA, which were reused because the risk barely moved, warm or cold start, and which posts changed.", side: "right" },
+  { id: "ag-trace", title: "Decision trace", body: "Append-only. Click a line to see what caused it: the report, the risk change or the closure.", side: "left" },
 ]
